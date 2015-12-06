@@ -1,52 +1,61 @@
-#include<stdio.h>
-#include<string.h>
-#include<pthread.h>
-#include<stdlib.h>
-#include<unistd.h>
+/* A simple server in the internet domain using TCP
+The port number is passed as an argument */
+#include "bankserver.h"
 
-pthread_t tid[2];
-int counter;
-pthread_mutex_t lock;
-
-void* doSomeThing(void *arg)
+void error(const char *msg)
 {
-    pthread_mutex_lock(&lock);
-
-    unsigned long i = 0;
-    counter += 1;
-    printf("\n Job %d started\n", counter);
-
-    for(i=0; i<(0xFFFFFFFF);i++);
-
-    printf("\n Job %d finished\n", counter);
-
-    pthread_mutex_unlock(&lock);
-
-    return NULL;
+	perror(msg);
+	exit(1);
 }
 
-int main(void)
+void start_server() {
+	int sockfd, newsockfd, portno;
+	socklen_t clilen;
+	char buffer[256];
+	struct sockaddr_in serv_addr, cli_addr;
+	int n;
+	if (argc < 2) {
+		fprintf(stderr, "ERROR, no port provided\n");
+		exit(1);
+	}
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0)
+		error("ERROR opening socket");
+	bzero((char *)&serv_addr, sizeof(serv_addr));
+	portno = atoi(argv[1]);
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_addr.s_addr = INADDR_ANY;
+	serv_addr.sin_port = htons(portno);
+	if (bind(sockfd, (struct sockaddr *) &serv_addr,
+		sizeof(serv_addr)) < 0)
+		error("ERROR on binding");
+	listen(sockfd, 5);
+	clilen = sizeof(cli_addr);
+	newsockfd = accept(sockfd,
+		(struct sockaddr *) &cli_addr,
+		&clilen);
+	if (newsockfd < 0)
+		error("ERROR on accept");
+	bzero(buffer, 256);
+	n = read(newsockfd, buffer, 255);
+	if (n < 0) error("ERROR reading from socket");
+	printf("Here is the message: %s\n", buffer);
+	n = write(newsockfd, "I got your message", 18);
+	if (n < 0) error("ERROR writing to socket");
+	close(newsockfd);
+	close(sockfd);
+
+}
+
+int main(int argc, char *argv[])
 {
-    int i = 0;
-    int err;
+	pthread_t server_thread;
+	if (pthread_create(&server_thread, NULL, start_server, NULL)) {
 
-    if (pthread_mutex_init(&lock, NULL) != 0)
-    {
-        printf("\n mutex init failed\n");
-        return 1;
-    }
+		fprintf(stderr, "Error creating thread\n");
+		return 1;
 
-    while(i < 2)
-    {
-        err = pthread_create(&(tid[i]), NULL, &doSomeThing, NULL);
-        if (err != 0)
-            printf("\ncan't create thread :[%s]", strerror(err));
-        i++;
-    }
-
-    pthread_join(tid[0], NULL);
-    pthread_join(tid[1], NULL);
-    pthread_mutex_destroy(&lock);
-
-    return 0;
+	}
+	pthread_join(server_thread, NULL);
+	return 0;
 }
