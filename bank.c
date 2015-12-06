@@ -128,6 +128,37 @@ int* remove_socket_FD(int socket_FD, int active_socket_FD_list[]) {
 	return active_socket_FD_list;
 }
 
+void start_threads(thread_node *head, int socket_FD) {
+
+	thread_node *pointer;
+	thread_node *new_node;
+	pointer = head;
+
+	if (head == NULL) {
+		new_node = malloc(sizeof(thread_node));
+		head = new_node;
+		head->socket_FD = socket_FD;
+		pthread_create(&head->incoming, NULL, read_input, &socket_FD);
+		pthread_create(&head->outgoing, NULL, write_output, &socket_FD);
+
+	}
+	else if (pointer != NULL) {
+		while (pointer->next != NULL)
+		{
+			pointer = pointer->next;
+		}
+	}
+	/* Creates a node at the end of the list */
+	new_node = malloc(sizeof(thread_node));
+	pointer->next = new_node;
+	pointer->socket_FD = socket_FD;
+	pthread_create(&new_node->incoming, NULL, read_input, &socket_FD);
+	pthread_create(&new_node->outgoing, NULL, write_output, &socket_FD);
+
+	return 0;
+
+}
+
 int main(int argc, char *argv[])
 {
 	account *active_account;
@@ -136,6 +167,12 @@ int main(int argc, char *argv[])
 	/*arbitrary port number = 2101*/
 	int port; port = 2101;
 	char input[256];
+
+	thread_node *thread_reference_head;
+	thread_reference_head = malloc(sizeof(thread_node));
+	thread_reference_head->incoming = NULL;
+	thread_reference_head->outgoing = NULL;
+	thread_reference_head->next = NULL;
 
 	/*the following is heavily base off of http://www.linuxhowtos.org/C_C++/socket.htm */
 	/* sockfd and newsockfd are for the file descriptors returned from socket/accept system call*/
@@ -164,11 +201,11 @@ int main(int argc, char *argv[])
 	if (server_socket_FD < 0)
 		error("ERROR opening socket");
 	/*initializes the server address buffer to all zeroes,*/
-	bzero((char *)&server_address, sizeof(serv_addr));
+	bzero((char *)&server_address, sizeof(server_address));
 
 	/*initiliazing all the fields for the server address struct.*/
 	server_address.sin_family = AF_INET;
-	server_address.sin_port = port;
+	server_address.sin_port = htons(port);
 	/*server address.sin_addr.s_addr is the IP address of the host. INADDR_ANY is symbolic for this address*/
 	server_address.sin_addr.s_addr = INADDR_ANY;
 
@@ -178,24 +215,36 @@ int main(int argc, char *argv[])
 
 	/*this will listen for (at most) 5 connections trying to contact this socket*/
 	listen(server_socket_FD, 5);
-
-	/**********************************************************************************/
 	clilen = sizeof(client_address);
-	new_socket_FD = accept(server_socket_FD,(struct sockaddr *) &client_address, &clilen);
 
-	add_socket_FD(new_socket_FD, active_socket_FD_list);
-			
-	if (new_socket_FD < 0)
-		error("ERROR on accept");
+		
+		new_socket_FD = accept(server_socket_FD, (struct sockaddr *) &client_address, &clilen);
+		active_socket_FD_list[0] = add_socket_FD(new_socket_FD, active_socket_FD_list);
+		start_threads(thread_reference_head, new_socket_FD);
+
+		if (new_socket_FD < 0)
+			error("ERROR on accept");
+
+		
+
+		
+	
+	
+
+}
+
+void read_input(int new_socket_FD){
+	char *input;
+	int num_chars_read;
 
 	bzero(input, 256);
 	num_chars_read = read(new_socket_FD, input, 255);
 	if (num_chars_read < 0) error("ERROR reading from socket");
-	printf("Here is the message: %s",input);
-	num_chars_read = write(new_socket_FD, "I got your message", 18);
-	if (num_chars_read < 0) error("ERROR writing to socket");
-	
-	getch();
-
+	printf("Here is the message: %s", input);
 }
 
+void write_output(int new_socket_FD) {
+	int num_chars_read;
+	num_chars_read = write(new_socket_FD, "I got your message", 18);
+	if (num_chars_read < 0) error("ERROR writing to socket");
+}
