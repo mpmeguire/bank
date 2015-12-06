@@ -37,5 +37,4 @@ int* remove_socket_FD(int, int[]);
 void open_account(char*, account*[]);
 void print_account_list(account *account_list[]);
 void start_server();
-void read_input(int);
-void write_output(int);
+void client_service_thread(int);
