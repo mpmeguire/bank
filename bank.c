@@ -128,36 +128,7 @@ int* remove_socket_FD(int socket_FD, int active_socket_FD_list[]) {
 	return active_socket_FD_list;
 }
 
-void start_threads(thread_node *head, int socket_FD) {
 
-	thread_node *pointer;
-	thread_node *new_node;
-	pointer = head;
-
-	if (head == NULL) {
-		new_node = malloc(sizeof(thread_node));
-		head = new_node;
-		head->socket_FD = socket_FD;
-		pthread_create(&head->incoming, NULL, read_input, &socket_FD);
-		pthread_create(&head->outgoing, NULL, write_output, &socket_FD);
-
-	}
-	else if (pointer != NULL) {
-		while (pointer->next != NULL)
-		{
-			pointer = pointer->next;
-		}
-	}
-	/* Creates a node at the end of the list */
-	new_node = malloc(sizeof(thread_node));
-	pointer->next = new_node;
-	pointer->socket_FD = socket_FD;
-	pthread_create(&new_node->incoming, NULL, read_input, &socket_FD);
-	pthread_create(&new_node->outgoing, NULL, write_output, &socket_FD);
-
-	return 0;
-
-}
 
 int main(int argc, char *argv[])
 {
@@ -220,20 +191,19 @@ int main(int argc, char *argv[])
 		
 		new_socket_FD = accept(server_socket_FD, (struct sockaddr *) &client_address, &clilen);
 		active_socket_FD_list[0] = add_socket_FD(new_socket_FD, active_socket_FD_list);
-		start_threads(thread_reference_head, new_socket_FD);
+		
+		pthread_t thread1;
+		pthread_create(&thread1, NULL, client_service_thread, &new_socket_FD);
 
 		if (new_socket_FD < 0)
 			error("ERROR on accept");
 
-		
-
-		
 	
-	
+	getch();
 
 }
 
-void read_input(int new_socket_FD){
+void client_service_thread(int new_socket_FD){
 	char *input;
 	int num_chars_read;
 
@@ -241,10 +211,8 @@ void read_input(int new_socket_FD){
 	num_chars_read = read(new_socket_FD, input, 255);
 	if (num_chars_read < 0) error("ERROR reading from socket");
 	printf("Here is the message: %s", input);
-}
-
-void write_output(int new_socket_FD) {
 	int num_chars_read;
 	num_chars_read = write(new_socket_FD, "I got your message", 18);
 	if (num_chars_read < 0) error("ERROR writing to socket");
 }
+
