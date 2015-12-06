@@ -1,4 +1,5 @@
 
+
 #include "bankserver.h"
 
 void open_account(char *account_name, account *account_list[]) {
@@ -193,26 +194,34 @@ int main(int argc, char *argv[])
 		active_socket_FD_list[0] = add_socket_FD(new_socket_FD, active_socket_FD_list);
 		
 		pthread_t thread1;
-		pthread_create(&thread1, NULL, client_service_thread, &new_socket_FD);
-
+		
+		pthread_create(&thread1, NULL, client_service_thread, new_socket_FD);
+	
 		if (new_socket_FD < 0)
 			error("ERROR on accept");
 
 	
-	getch();
+		pthread_join(thread1, NULL);
 
 }
 
-void client_service_thread(int new_socket_FD){
-	char *input;
-	int num_chars_read;
+void client_service_thread(int new_socket_FD) {
 
+	char input[256], *command, *input_arg;
+	int num_chars_read, z;
+	z = 0;
+	while (z != 3) {
 	bzero(input, 256);
+
 	num_chars_read = read(new_socket_FD, input, 255);
+
 	if (num_chars_read < 0) error("ERROR reading from socket");
-	printf("Here is the message: %s", input);
-	int num_chars_read;
+	command = strtok(input, " ");
+	input_arg = strtok(NULL, " ");
+
+	printf("command: %s\targument: %s", command, input_arg);
+
 	num_chars_read = write(new_socket_FD, "I got your message", 18);
 	if (num_chars_read < 0) error("ERROR writing to socket");
 }
-
+}
