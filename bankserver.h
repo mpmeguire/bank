@@ -7,8 +7,6 @@
 #include <netinet/in.h>
 
 
-void start_server();
-
 typedef struct
 {
 
@@ -17,3 +15,14 @@ typedef struct
 	int inUse;
 
 } account;
+
+
+account* start_account_session(char*, account*[]);
+account* finish_account_session(account*);
+account* credit_account(account*, float);
+account* debit_account(account*, float);
+int* add_socket_FD(int, int[]);
+int* remove_socket_FD(int, int[]);
+void open_account(char*, account*[]);
+void print_account_list(account *account_list[]);
+void start_server();
