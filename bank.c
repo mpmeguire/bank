@@ -75,18 +75,24 @@ void account_balance(account *active_account) {
 
 
 void print_account_list(account *account_list[]) {
-	int x;
+	int x, empty;
+	
+	while (1) {
+		printf("ALL ACCOUNTS AND BALANCES:\n");
+		empty = 1;
+		for (x = 0; x <= 19; x++) {
+			if (account_list[x] != NULL) {
+				printf("------------------\naccount name: %s\n", account_list[x]->name);
+				printf("account balance: %f\n", account_list[x]->balance);
+				printf("account in use: %d\n------------------\n", account_list[x]->inUse);
+				empty = 0;
+			}
 
-	printf("ALL ACCOUNTS AND BALANCES:\n");
-	for (x = 0; x <= 19; x++) {
-		if (account_list[x] != NULL) {
-			printf("------------------\naccount name: %s\n", account_list[x]->name);
-			printf("account balance: %f\n", account_list[x]->balance);
-			printf("account in use: %d\n------------------\n", account_list[x]->inUse);
 		}
-		else {
-			printf("%d", x);
+		if (empty = 1) {
+			printf("NO ACCOUNTS TO SHOW\n");
 		}
+		sleep(20);
 	}
 }
 
@@ -143,7 +149,8 @@ int main(int argc, char *argv[])
 	/*arbitrary port number = 2101*/
 	int port; port = 2101;
 	char input[256];
-
+	pthread_t print_accounts;
+	pthread_create(&print_accounts, NULL, client_service_thread, socket_FD);
 	thread_node *head;
 	head = NULL;
 
@@ -260,22 +267,30 @@ void client_service_thread(int new_socket_FD) {
 		if (active_account == NULL) {
 			switch (command) {
 			case 'o': open_account(input_arg);
+				break;
 			case 's': active_account = start_account_session(input_arg);
+				break;
 
 			case 'e': disconnect_client(new_socket_FD);
-			default: /*error*/
+				break;
+			default: printf("error\n");
 			}
 		}
 		else {
 			switch (command) {
 
 			case 'c': active_account = credit_account(active_account, (float)atoll(input_arg));
+				break;
 			case 'd': active_account = debit_account(active_account, (float)atoll(input_arg));
+				break;
 			case 'b': account_balance(active_account);
+				break;
 			case 'f': finish_account_session(active_account);
 				active_account = NULL;
+				break;
 			case 'e': disconnect_client(new_socket_FD);
-			default: /*error*/
+				break;
+			default: printf("error\n");
 			}
 		}
 
