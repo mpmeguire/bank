@@ -48,23 +48,25 @@ account* start_account_session(char *account_name) {
 		}
 	}
 	printf("account not found.\n");
-	return list[x];
+	return NULL;
 }
 
 account* finish_account_session(account* active_account) {
 
 	active_account->inUse = 0;
 	printf("client session for account |%s| is terminated.\n", active_account->name);
-	return active_account;
+	return NULL;
 }
 
 account* credit_account(account *active_account, float credit) {
 	active_account->balance += credit;
+	printf("adding %f to the balance\n", credit);
 	return active_account;
 }
 
 account* debit_account(account *active_account, float debit) {
 	active_account->balance = active_account->balance - debit;
+	printf("subtracting %f from the balance\n", debit);
 	return active_account;
 }
 
@@ -74,17 +76,17 @@ void account_balance(account *active_account) {
 }
 
 
-void print_account_list(account *account_list[]) {
+void print_account_list() {
 	int x, empty;
 	
-	while (1) {
+	
 		printf("ALL ACCOUNTS AND BALANCES:\n");
 		empty = 1;
 		for (x = 0; x <= 19; x++) {
-			if (account_list[x] != NULL) {
-				printf("------------------\naccount name: %s\n", account_list[x]->name);
-				printf("account balance: %f\n", account_list[x]->balance);
-				printf("account in use: %d\n------------------\n", account_list[x]->inUse);
+			if (list[x] != NULL) {
+				printf("------------------\naccount name: %s\n", list[x]->name);
+				printf("account balance: %f\n", list[x]->balance);
+				printf("account in use: %d\n------------------\n", list[x]->inUse);
 				empty = 0;
 			}
 
@@ -92,8 +94,7 @@ void print_account_list(account *account_list[]) {
 		if (empty = 1) {
 			printf("NO ACCOUNTS TO SHOW\n");
 		}
-		sleep(20);
-	}
+	
 }
 
 create_server(int port) {
@@ -150,7 +151,7 @@ int main(int argc, char *argv[])
 	int port; port = 2101;
 	char input[256];
 	pthread_t print_accounts;
-	pthread_create(&print_accounts, NULL, client_service_thread, socket_FD);
+	pthread_create(&print_accounts, NULL, client_service_thread, NULL);
 	thread_node *head;
 	head = NULL;
 
@@ -231,6 +232,9 @@ char find_command(char *string) {
 	}
 	else if (strcmp(string, "finish") == 0) {
 		return 'f';
+	}
+	else if (strcmp(string, "print") == 0) {
+		return 'p';
 	}
 	else if (strcmp(string, "exit") == 0) {
 		return 'e';
