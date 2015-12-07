@@ -1,5 +1,4 @@
 
-
 #include "bankserver.h"
 
 void open_account(char *account_name, account *account_list[]) {
@@ -97,35 +96,37 @@ create_server(int port) {
 
 }
 
-void add_thread(thread_node *head, int socket_FD) {
-	
+void add_thread(thread_node **head, int socket_FD) {
+
 	thread_node *pointer;
 	thread_node *new_node;
 
-	if (head == NULL) {
-		head = malloc(sizeof(thread_node));
-		head->socket_FD = socket_FD;
-		head->next = NULL;
-		pthread_create(&head->thread, NULL, client_service_thread, socket_FD);
+	if ((*head) == NULL) {
+		printf("something,,\n");
+		(*head) = malloc(sizeof(thread_node));
+		(*head)->socket_FD = socket_FD;
+		(*head)->next = NULL;
+		pthread_create(&(*head)->thread, NULL, client_service_thread, socket_FD);
 	}
 	else {
-		pointer = head;
-		while (pointer != NULL) {
-			if (pointer->next != NULL) {
-				pointer = pointer->next;
-			}
-			else {
-				new_node = malloc(sizeof(thread_node));
-				new_node->socket_FD = socket_FD;
-				new_node->next = NULL;
-				pthread_create(&new_node->thread, NULL, client_service_thread, socket_FD);
-			}
+		pointer = (*head);
+		while (pointer->next != NULL) {
+
+			pointer = pointer->next;
+
 		}
+
+		new_node = malloc(sizeof(thread_node));
+		new_node->socket_FD = socket_FD;
+		new_node->next = NULL;
+		pthread_create(&new_node->thread, NULL, client_service_thread, socket_FD);
+		pointer->next = new_node;
 
 	}
 
 
 }
+
 
 int* remove_socket_FD(int socket_FD, int active_socket_FD_list[]) {
 
@@ -143,7 +144,7 @@ int main(int argc, char *argv[])
 	int port; port = 2101;
 	char input[256];
 
-	thread_node *head, *new_node;
+	thread_node *head;
 	head = NULL;
 
 	/*the following is heavily base off of http://www.linuxhowtos.org/C_C++/socket.htm */
@@ -191,9 +192,8 @@ int main(int argc, char *argv[])
 
 		
 		new_socket_FD = accept(server_socket_FD, (struct sockaddr *) &client_address, &clilen);
-		active_socket_FD_list[0] = add_socket_FD(new_socket_FD, active_socket_FD_list);
 		
-		add_thread(head, new_socket_FD);
+		add_thread(&head, new_socket_FD);
 		
 		
 	
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 			error("ERROR on accept");
 
 	
-		pthread_join(thread1, NULL);
+		pthread_join(head->thread, NULL);
 
 }
 
