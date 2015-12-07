@@ -17,14 +17,16 @@ typedef struct
 
 } account;
 
-typedef struct
+struct thread_node_t
 {
 
 	pthread_t *thread;
 	int socket_FD;
-	pthread_t *next;
+	struct thread_node_t *next;
 
-} thread_node;
+};
+
+typedef struct thread_node_t thread_node;
 
 account *list[20];
 account* start_account_session(char*, account*[]);
