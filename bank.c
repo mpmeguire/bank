@@ -1,27 +1,27 @@
 
 #include "bankserver.h"
 
-void open_account(char *account_name, account *account_list[]) {
+void open_account(char *account_name) {
 	account *new_account;
 	int x;
 	x = 0;
 
 	for (x = 0; x <= 19; x++) {
-		if (account_list[x] != NULL) {
+		if (list[x] != NULL) {
 
-			if (strcmp(account_name, account_list[x]->name) == 0) {
+			if (strcmp(account_name, list[x]->name) == 0) {
 				printf("Account already exists.\n");
 				return;
 			}
 		}
 	}
 	for (x = 0; x <= 19; x++) {
-		if (account_list[x] == NULL) {
+		if (list[x] == NULL) {
 			new_account = (account*)malloc(sizeof(account));
 			strcpy(new_account->name, account_name);
 			new_account->balance = 0.0;
 			new_account->inUse = 0;
-			account_list[x] = new_account;
+			list[x] = new_account;
 			printf("new account |%s| created\n", account_name);
 			return;
 		}
@@ -32,23 +32,23 @@ void open_account(char *account_name, account *account_list[]) {
 
 }
 
-account* start_account_session(char *account_name, account *account_list[]) {
+account* start_account_session(char *account_name) {
 
 	int x;
 	x = 0;
 
 	for (x = 0; x <= 19; x++) {
-		if (account_list[x] != NULL) {
+		if (list[x] != NULL) {
 
-			if (strcmp(account_name, account_list[x]->name) == 0) {
+			if (strcmp(account_name, list[x]->name) == 0) {
 				printf("Starting session for account: |%s|\n", account_name);
-				account_list[x]->inUse = 1;
-				return account_list[x];
+				list[x]->inUse = 1;
+				return list[x];
 			}
 		}
 	}
 	printf("account not found.\n");
-	return account_list[x];
+	return list[x];
 }
 
 account* finish_account_session(account* active_account) {
@@ -102,7 +102,7 @@ void add_thread(thread_node **head, int socket_FD) {
 	thread_node *new_node;
 
 	if ((*head) == NULL) {
-		printf("something,,\n");
+	
 		(*head) = malloc(sizeof(thread_node));
 		(*head)->socket_FD = socket_FD;
 		(*head)->next = NULL;
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 {
 	account *active_account;
 	active_account = NULL;
-	
+	pthread_mutex_init(&lock, NULL);
 	/*arbitrary port number = 2101*/
 	int port; port = 2101;
 	char input[256];
@@ -205,9 +205,42 @@ int main(int argc, char *argv[])
 
 }
 
-void client_service_thread(int new_socket_FD) {
+char find_command(char *string) {
+	/*open = o, start = s, credit = c, debit = d, balance = b, finish = f, exit = e, error = x*/
+	if (strcmp(string, "open") == 0) {
+		return 'o';
+	}
+	else if (strcmp(string, "start") == 0) {
+		return 's';
+	}
+	else if (strcmp(string, "credit") == 0) {
+		return 'c';
+	}
+	else if (strcmp(string, "debit") == 0) {
+		return 'd';
+	}
+	else if (strcmp(string, "balance") == 0) {
+		return 'b';
+	}
+	else if (strcmp(string, "finish") == 0) {
+		return 'f';
+	}
+	else if (strcmp(string, "exit") == 0) {
+		return 'e';
+	}
+	else return 'x';
+}
 
-	char input[256], *command, *input_arg;
+void disconnect_client(int socket_FD) {
+
+}
+
+void client_service_thread(int new_socket_FD) {
+	pthread_mutex_lock(&lock);
+	char input[256], *command_arg, *input_arg, command;
+
+	account *active_account;
+	active_account = NULL;
 	int num_chars_read, z;
 	while (1) {
 		bzero(input, 256);
@@ -215,13 +248,38 @@ void client_service_thread(int new_socket_FD) {
 		num_chars_read = read(new_socket_FD, input, 255);
 
 		if (num_chars_read < 0) error("ERROR reading from socket");
-		command = strtok(input, " ");
+		command_arg = strtok(input, " ");
 		input_arg = strtok(NULL, " ");
 
-		printf("command: %s\targument: %s", command, input_arg);
+		printf("command: %s\targument: %s", command_arg, input_arg);
 
 		num_chars_read = write(new_socket_FD, "I got your message", 18);
 		if (num_chars_read < 0) error("ERROR writing to socket");
-	}
 
+		command = find_command(command_arg);
+		if (active_account == NULL) {
+			switch (command) {
+			case 'o': open_account(input_arg);
+			case 's': active_account = start_account_session(input_arg);
+
+			case 'e': disconnect_client(new_socket_FD);
+			default: /*error*/
+			}
+		}
+		else {
+			switch (command) {
+
+			case 'c': active_account = credit_account(active_account, (float)atoll(input_arg));
+			case 'd': active_account = debit_account(active_account, (float)atoll(input_arg));
+			case 'b': account_balance(active_account);
+			case 'f': finish_account_session(active_account);
+				active_account = NULL;
+			case 'e': disconnect_client(new_socket_FD);
+			default: /*error*/
+			}
+		}
+
+
+	}
+	pthread_mutex_unlock(&lock);
 }
